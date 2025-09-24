@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { useRouter } from "next/router";
 import { FiMenu, FiX, FiChevronDown } from "react-icons/fi";
 
 type MenuLink = { label: string; href: string };
@@ -13,7 +13,8 @@ type MenuItem =
     | { label: string; key: string; dropdown: (MenuLink | MenuGroup)[] };
 
 export default function Navbar() {
-    const pathname = usePathname() ?? "";
+    const router = useRouter();
+    const pathname = router.pathname ?? "";
 
     const [isOpen, setIsOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
@@ -218,7 +219,7 @@ export default function Navbar() {
                                         >
                                             <button
                                                 type="button"
-                                                className={`${linkBase} flex justify-between items-center gap-2 w-full lg:w-auto ${parentActive ? "text-yellow-400" : "text-white"
+                                                className={`${linkBase} flex justify-between items-center gap-2 w-full lg:w-auto cursor-pointer ${parentActive ? "text-yellow-400" : "text-white"
                                                     }`}
                                                 aria-haspopup="menu"
                                                 aria-expanded={(desktopOpen || mobileDropdown === key) || undefined}
@@ -253,8 +254,8 @@ export default function Navbar() {
                                                                                 <Link
                                                                                     href={child.href}
                                                                                     className={`block py-1 ${childActive
-                                                                                        ? "text-yellow-400"
-                                                                                        : "text-gray-300 hover:text-yellow-500"
+                                                                                            ? "text-yellow-400"
+                                                                                            : "text-gray-300 hover:text-yellow-500"
                                                                                         }`}
                                                                                     aria-current={childActive ? "page" : undefined}
                                                                                     onClick={closeAllMenus}
@@ -277,8 +278,8 @@ export default function Navbar() {
                                                                     <Link
                                                                         href={link.href}
                                                                         className={`block py-2 px-4 ${childActive
-                                                                            ? "text-yellow-400"
-                                                                            : "text-gray-300 hover:text-yellow-500"
+                                                                                ? "text-yellow-400"
+                                                                                : "text-gray-300 hover:text-yellow-500"
                                                                             }`}
                                                                         aria-current={childActive ? "page" : undefined}
                                                                         onClick={closeAllMenus}
@@ -310,8 +311,8 @@ export default function Navbar() {
                                                                                     <Link
                                                                                         href={child.href}
                                                                                         className={`block py-1 pl-1 ${childActive
-                                                                                            ? "text-yellow-400"
-                                                                                            : "text-gray-300 hover:text-yellow-500"
+                                                                                                ? "text-yellow-400"
+                                                                                                : "text-gray-300 hover:text-yellow-500"
                                                                                             }`}
                                                                                         aria-current={childActive ? "page" : undefined}
                                                                                         onClick={closeAllMenus}
@@ -334,8 +335,8 @@ export default function Navbar() {
                                                                         <Link
                                                                             href={link.href}
                                                                             className={`block py-2 pl-2 ${childActive
-                                                                                ? "text-yellow-400"
-                                                                                : "text-gray-300 hover:text-yellow-500"
+                                                                                    ? "text-yellow-400"
+                                                                                    : "text-gray-300 hover:text-yellow-500"
                                                                                 }`}
                                                                             aria-current={childActive ? "page" : undefined}
                                                                             onClick={closeAllMenus}
@@ -360,7 +361,8 @@ export default function Navbar() {
                                     <Link
                                         key={idx}
                                         href={simple.href}
-                                        className={`${linkBase} ${simpleActive ? "text-yellow-400" : "text-white"}`}
+                                        className={`${linkBase} ${simpleActive ? "text-yellow-400" : "text-white"
+                                            }`}
                                         aria-current={simpleActive ? "page" : undefined}
                                         onClick={closeAllMenus}
                                     >

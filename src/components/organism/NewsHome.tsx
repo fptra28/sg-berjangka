@@ -30,7 +30,7 @@ interface Berita {
 
 /** Peta kategori: slug halaman -> daftar nama kategori pada data */
 const kategoriMap: Record<string, string[]> = {
-  indexNews: ["Nikkei", "Hangseng"],
+  indexNews: ["Nikkei", "Hang seng"],
   commodityNews: ["Gold", "Silver", "Oil"],
   currenciesNews: [
     "EUR/USD",
@@ -157,8 +157,8 @@ export default function NewsHome() {
             const href =
               mappedKategoriSlug && item.slug
                 ? `/${encodeURIComponent(mappedKategoriSlug)}/${encodeURIComponent(
-                    item.slug
-                  )}`
+                  item.slug
+                )}`
                 : "/#";
 
             return (

@@ -1,7 +1,7 @@
 "use client";
 
 import useSWR from "swr";
-import { notFound } from "next/navigation";
+import { useRouter } from "next/router"; // <-- Pages Router
 import { useEffect, useMemo, useState } from "react";
 import AOS from "aos";
 import NewsCard from "../moleculs/NewsCard";
@@ -21,7 +21,7 @@ type TitleVariants = {
 interface Berita {
     id: number;
     title: string;
-    titles?: TitleVariants; // ← penting: dukung variasi judul
+    titles?: TitleVariants;
     slug: string;
     content: string;
     category_id: number;
@@ -32,13 +32,11 @@ interface Berita {
 }
 
 interface NewsContainerProps {
-    /** contoh valid: "indexNews", "commodityNews", "currenciesNews", "economicNews", "analisisMarket", "analisisOpini" */
     kategoriSlug: string;
 }
 
-/** Peta kategori: slug halaman -> daftar nama kategori pada data */
 const kategoriMap: Record<string, string[]> = {
-    indexNews: ["Nikkei", "Hangseng"],
+    indexNews: ["Nikkei", "Hang seng"],
     commodityNews: ["Gold", "Silver", "Oil"],
     currenciesNews: ["EUR/USD", "USD/JPY", "USD/CHF", "AUD/USD", "GBP/USD", "US DOLLAR"],
     economicNews: ["Global Economics"],
@@ -58,21 +56,16 @@ function mediaUrl(p?: string) {
     const base = process.env.NEXT_PUBLIC_MEDIA_BASE_URL || "https://portalnews.newsmaker.id";
     return `${base}/${p.replace(/^\/+/, "")}`;
 }
-
 function pickTitle(item: Berita): string {
     const t = item.titles ?? {};
     const candidates = [t.sg, t.default, item.title];
     return candidates.find((s): s is string => !!s && s.trim().length > 0) ?? "";
 }
-
-/** fetcher dasar */
 const fetcher = (url: string) =>
     fetch(url, { headers: { accept: "application/json" }, cache: "no-store" }).then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status} on ${url}`);
         return r.json();
     });
-
-/** Ambil array dari berbagai bentuk respons */
 function pickArray<T = unknown>(raw: any): T[] {
     if (Array.isArray(raw)) return raw as T[];
     if (raw && Array.isArray(raw.data)) return raw.data as T[];
@@ -81,14 +74,28 @@ function pickArray<T = unknown>(raw: any): T[] {
 }
 
 export default function NewsContainer({ kategoriSlug }: NewsContainerProps) {
-    // 404 guard
+    const router = useRouter();
+
+    // 404 guard manual
     const allowedSlugs = useMemo(() => new Set(Object.keys(kategoriMap)), []);
-    if (!allowedSlugs.has(kategoriSlug)) notFound();
+    if (!allowedSlugs.has(kategoriSlug)) {
+        // render fallback 404
+        return (
+            <div className="text-center text-red-400 py-20">
+                <h1>404 - Halaman Tidak Ditemukan</h1>
+                <button
+                    className="mt-4 px-4 py-2 bg-yellow-500 rounded text-black"
+                    onClick={() => router.push("/")}
+                >
+                    Kembali ke Beranda
+                </button>
+            </div>
+        );
+    }
 
     const [activeFilter, setActiveFilter] = useState("All");
     const [searchQuery, setSearchQuery] = useState("");
 
-    // Init & refresh AOS
     useEffect(() => {
         AOS.init({ once: true });
     }, []);
@@ -97,7 +104,6 @@ export default function NewsContainer({ kategoriSlug }: NewsContainerProps) {
         return () => cancelAnimationFrame(id);
     });
 
-    // Reset filter & search saat kategori berubah
     useEffect(() => {
         setActiveFilter("All");
         setSearchQuery("");
@@ -105,7 +111,6 @@ export default function NewsContainer({ kategoriSlug }: NewsContainerProps) {
 
     const filters = useMemo(() => ["All", ...(kategoriMap[kategoriSlug] || [])], [kategoriSlug]);
 
-    // === SWR ===
     const { data, error } = useSWR("https://portalnews.newsmaker.id/api/berita", fetcher, {
         refreshInterval: 15_000,
         revalidateOnFocus: true,
@@ -114,7 +119,6 @@ export default function NewsContainer({ kategoriSlug }: NewsContainerProps) {
         dedupingInterval: 5000,
     });
 
-    // === Data hasil & filter ===
     const newsData: Berita[] = useMemo(
         () =>
             pickArray<Berita>(data).filter(
@@ -128,7 +132,6 @@ export default function NewsContainer({ kategoriSlug }: NewsContainerProps) {
 
     const filteredNews = useMemo(() => {
         const allowed = (kategoriMap[kategoriSlug] || []).map((c) => c.toLowerCase());
-
         const byKategoriSlug =
             allowed.length > 0
                 ? newsData.filter((item) => {
@@ -139,48 +142,39 @@ export default function NewsContainer({ kategoriSlug }: NewsContainerProps) {
 
         const q = searchQuery.trim().toLowerCase();
 
-        const result = byKategoriSlug.filter((n) => {
-            const katName = n.kategori?.name || "";
-            const matchFilter =
-                activeFilter.toLowerCase() === "all" ||
-                katName.toLowerCase() === activeFilter.toLowerCase();
+        return byKategoriSlug
+            .filter((n) => {
+                const katName = n.kategori?.name || "";
+                const matchFilter =
+                    activeFilter.toLowerCase() === "all" ||
+                    katName.toLowerCase() === activeFilter.toLowerCase();
 
-            // 🔑 gunakan judul prioritas SG untuk pencarian
-            const text = (pickTitle(n) || "").toLowerCase() + " " + katName.toLowerCase();
+                const text = (pickTitle(n) || "").toLowerCase() + " " + katName.toLowerCase();
 
-            const matchSearch = q === "" || text.includes(q);
+                const matchSearch = q === "" || text.includes(q);
 
-            return matchFilter && matchSearch;
-        });
-
-        return result
-            .slice()
+                return matchFilter && matchSearch;
+            })
             .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
             .slice(0, 9);
     }, [newsData, kategoriSlug, activeFilter, searchQuery]);
 
-    // Flags tampilan & skeleton count
     const showSkeleton = typeof data === "undefined";
     const showNoData = data !== undefined && filteredNews.length === 0;
     const skeletonCount = filteredNews.length > 0 ? filteredNews.length : 9;
 
-    // ====== RENDER ======
     if (error) return <div className="text-red-400">Gagal memuat berita.</div>;
 
     return (
         <div className="space-y-5">
             {/* Filter + Search */}
-            <div
-                className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3"
-                data-aos="fade-up"
-                data-aos-once="true"
-            >
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3" data-aos="fade-up" data-aos-once="true">
                 <div className="flex flex-wrap gap-3">
                     {filters.map((filter) => (
                         <button
                             key={filter}
                             onClick={() => setActiveFilter(filter)}
-                            className={`uppercase border border-yellow-500 text-white px-3 py-2 rounded-lg transition-all duration-300 ${activeFilter === filter
+                            className={`uppercase border border-yellow-500 text-white px-3 py-2 rounded-lg transition-all duration-300 cursor-pointer ${activeFilter === filter
                                 ? "bg-yellow-500 text-white"
                                 : "bg-gray-100/5 hover:bg-gray-100/10"
                                 }`}
@@ -203,11 +197,7 @@ export default function NewsContainer({ kategoriSlug }: NewsContainerProps) {
 
             {/* Konten */}
             {showSkeleton ? (
-                <div
-                    className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5"
-                    data-aos="fade-up"
-                    data-aos-once="true"
-                >
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5" data-aos="fade-up" data-aos-once="true">
                     {Array.from({ length: skeletonCount }).map((_, i) => (
                         <div key={i} className="rounded-lg overflow-hidden bg-neutral-900 border border-neutral-800">
                             <div className="h-40 w-full bg-neutral-800 animate-pulse" />
@@ -220,29 +210,15 @@ export default function NewsContainer({ kategoriSlug }: NewsContainerProps) {
                     ))}
                 </div>
             ) : showNoData ? (
-                <div
-                    className="text-neutral-300 border border-neutral-800 rounded-lg py-52 aos-init aos-animate"
-                    data-aos="fade-up"
-                    data-aos-once="true"
-                >
+                <div className="text-neutral-300 border border-neutral-800 rounded-lg py-52 aos-init aos-animate" data-aos="fade-up" data-aos-once="true">
                     <div className="flex justify-center">
-                        <img
-                            src="/assets/No Data Available Illustration.png"
-                            alt="No Data"
-                            className="h-50"
-                        />
+                        <img src="/assets/No Data Available Illustration.png" alt="No Data" className="h-50" />
                     </div>
                 </div>
             ) : (
-                <div
-                    className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5"
-                    data-aos="fade-up"
-                    data-aos-once="true"
-                >
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5" data-aos="fade-up" data-aos-once="true">
                     {filteredNews.map((news) => {
-                        const cleanDescription = stripHtml(news.content)
-                            .replace(/&nbsp;/g, " ")
-                            .trim();
+                        const cleanDescription = stripHtml(news.content).replace(/&nbsp;/g, " ").trim();
 
                         return (
                             <NewsCard

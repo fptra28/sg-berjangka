@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import Router from "next/router";
 import { DataLoaderProvider, useDataLoader } from "@/providers/DataLoaderProvider";
 import TradingView from "../organism/TradingView";
+import LanguageToggle from "../atoms/LanguageToggle";
 
 interface PageTemplatesProps {
     title?: string;
@@ -127,6 +128,8 @@ function PageInner({ children, title }: PageTemplatesProps) {
                     </div>
                 </div>
             </div>
+
+            {/* <LanguageToggle /> */}
 
             {/* Tawk.to Script */}
             <Script
