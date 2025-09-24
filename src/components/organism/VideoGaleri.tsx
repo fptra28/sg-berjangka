@@ -19,21 +19,24 @@ type ApiVideo = {
     id: number;
     title: string;
     image?: string | null;
-    embed_code: string; // HTML <iframe ...>
+    embed_code: string;
     created_at?: string;
     updated_at?: string;
 };
 type VideoItem = { id: number; title: string; thumb: string; iframeHtml: string };
 
+interface ApiResponse<T> {
+    status: number;
+    message: string;
+    data: T;
+}
+
 /* ========= Utils ========= */
 const fetcher = (url: string) => {
-    const token = process.env.NEXT_PUBLIC_API_TOKEN || localStorage.getItem('token');
-    console.log("Bearer Token:", token);  // Log token untuk debugging
-
     return fetch(url, {
         headers: {
             Accept: "application/json",
-            Authorization: `Bearer SGB-c7b0604664fd48d9`, // Menambahkan Bearer token pada header
+            Authorization: `Bearer SGB-c7b0604664fd48d9`,
         },
         cache: "no-store",
     }).then((r) => {
@@ -49,7 +52,6 @@ function mediaUrl(p?: string | null) {
     return `${base}/${String(p).replace(/^\/+/, "")}`;
 }
 
-/** Ambil src dari <iframe ...> */
 function extractIframeSrc(html?: string): string | undefined {
     if (!html) return;
     const noScript = html.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "");
@@ -63,20 +65,18 @@ export default function VideoGaleri() {
         data: legalitasData,
         error: legalitasErr,
         isLoading: legalitasLoading,
-    } = useSWR<ApiLegalitas[]>("https://vellorist.biz.id/api/v1/legalitas", fetcher, {
+    } = useSWR<ApiResponse<ApiLegalitas[]>>("https://vellorist.biz.id/api/v1/legalitas", fetcher, {
         refreshInterval: 60_000,
-        revalidateOnFocus: true,
-        revalidateOnReconnect: true,
-        keepPreviousData: true,
-        compare: (a, b) => JSON.stringify(a) === JSON.stringify(b),
     });
 
-    // Pastikan data legalitas adalah array sebelum melakukan map
     const legalitasList: LegalitasItem[] = useMemo(() => {
-        if (Array.isArray(legalitasData?.data)) {  // Pastikan data berada dalam array 'data'
-            return legalitasData.data.map((it) => ({ title: it.title, file: mediaUrl(it.image) }));
+        if (Array.isArray(legalitasData?.data)) {
+            return legalitasData.data.map((it) => ({
+                title: it.title,
+                file: mediaUrl(it.image),
+            }));
         }
-        return []; // Jika data tidak dalam bentuk array, kembalikan array kosong
+        return [];
     }, [legalitasData]);
 
     const [legalitasIndex, setLegalitasIndex] = useState(0);
@@ -101,17 +101,12 @@ export default function VideoGaleri() {
         data: videoData,
         error: videoErr,
         isLoading: videoLoading,
-    } = useSWR<ApiVideo[]>("https://vellorist.biz.id/api/v1/video", fetcher, {
+    } = useSWR<ApiResponse<ApiVideo[]>>("https://vellorist.biz.id/api/v1/video", fetcher, {
         refreshInterval: videoModalOpen ? 0 : 60_000,
-        revalidateOnFocus: !videoModalOpen,
-        revalidateOnReconnect: !videoModalOpen,
-        keepPreviousData: true,
-        compare: (a, b) => JSON.stringify(a) === JSON.stringify(b),
     });
 
-    // Pastikan data video adalah array
     const videoList: VideoItem[] = useMemo(() => {
-        if (Array.isArray(videoData?.data)) {  // Pastikan data berada dalam array 'data'
+        if (Array.isArray(videoData?.data)) {
             return videoData.data.map((v) => ({
                 id: v.id,
                 title: v.title,
@@ -119,7 +114,7 @@ export default function VideoGaleri() {
                 iframeHtml: v.embed_code,
             }));
         }
-        return []; // Jika data tidak dalam bentuk array, kembalikan array kosong
+        return [];
     }, [videoData]);
 
     const [videoIndex, setVideoIndex] = useState(0);
@@ -155,7 +150,7 @@ export default function VideoGaleri() {
         return () => window.removeEventListener("keydown", onKey);
     }, [legalitasModalOpen, closeLegalitasModal]);
 
-    /* ====== Modal Video (iframe stabil) ====== */
+    /* ====== Modal Video ====== */
     const [activeVideo, setActiveVideo] = useState<VideoItem | null>(null);
     const openVideoModal = useCallback((v: VideoItem) => {
         setActiveVideo(v);
@@ -175,25 +170,22 @@ export default function VideoGaleri() {
     const activeSrc = useMemo(() => extractIframeSrc(activeVideo?.iframeHtml), [activeVideo?.id]);
 
     // TikTok (contoh)
-    const tiktokId = "7550245657978653959";
+    const tiktokId = "7553316247002385676";
 
     return (
         <div className="flex flex-col lg:flex-row gap-5 p-4">
             {/* TikTok */}
             <section className="flex flex-col items-center text-center space-y-5 lg:w-1/3" data-aos="fade-right">
-                <div className="bg-neutral-800 px-4 py-2 rounded font-semibold text-yellow-500 w-fit">
-                    Video TikTok
-                </div>
+                <div className="bg-neutral-800 px-4 py-2 rounded font-semibold text-yellow-500 w-fit">Video TikTok</div>
                 <TikTokEmbed videoId={tiktokId} />
             </section>
 
             {/* Legalitas & Video */}
-            <section className="flex flex-col lg:w-2/3 space-y-10" data-aos="fade-left">
-                {/* LEGALITAS SLIDER */}
-                <div className="flex flex-col items-center text-center space-y-5">
+            <section className="flex flex-col lg:w-2/3 space-y-10">
+                {/* LEGALITAS */}
+                <div className="flex flex-col items-center text-center space-y-5" data-aos="fade-left">
                     <div className="bg-neutral-800 px-4 py-2 rounded font-semibold text-yellow-500 w-fit">Legalitas</div>
-
-                    <div className="relative w-full max-w-3xl overflow-hidden rounded-lg shadow-lg min-h-[16rem] sm:min-h-[20rem] md:min-h-[24rem] lg:min-h-[28rem] bg-neutral-900">
+                    <div className="relative w-full max-w-3xl overflow-hidden rounded-lg shadow-lg min-h-[16rem] bg-neutral-900">
                         {legalitasLoading ? (
                             <div className="w-full h-full animate-pulse bg-neutral-800" />
                         ) : legalitasErr ? (
@@ -207,7 +199,7 @@ export default function VideoGaleri() {
                                         key={legalitasIndex}
                                         src={currentLegalitas.file}
                                         alt={currentLegalitas.title}
-                                        className="w-full h-64 sm:h-80 md:h-96 lg:h-[28rem] object-contain rounded-lg bg-neutral-900 cursor-pointer"
+                                        className="w-full h-82 object-cover rounded-lg bg-neutral-800 cursor-pointer"
                                         onClick={() => openLegalitasModal(currentLegalitas)}
                                         initial={{ x: 300, opacity: 0 }}
                                         animate={{ x: 0, opacity: 1 }}
@@ -215,23 +207,10 @@ export default function VideoGaleri() {
                                         transition={{ duration: 0.8 }}
                                     />
                                 </AnimatePresence>
-
                                 {legalitasList.length > 1 && (
                                     <>
-                                        <button
-                                            onClick={prevLegalitas}
-                                            className="absolute top-1/2 left-2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70"
-                                            aria-label="Sebelumnya"
-                                        >
-                                            ❮
-                                        </button>
-                                        <button
-                                            onClick={nextLegalitas}
-                                            className="absolute top-1/2 right-2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70"
-                                            aria-label="Berikutnya"
-                                        >
-                                            ❯
-                                        </button>
+                                        <button onClick={prevLegalitas} className="absolute top-1/2 left-2">❮</button>
+                                        <button onClick={nextLegalitas} className="absolute top-1/2 right-2">❯</button>
                                     </>
                                 )}
                             </>
@@ -239,11 +218,10 @@ export default function VideoGaleri() {
                     </div>
                 </div>
 
-                {/* VIDEO SLIDER */}
+                {/* VIDEO */}
                 <div className="flex flex-col items-center text-center space-y-5" data-aos="fade-left">
                     <div className="bg-neutral-800 px-4 py-2 rounded font-semibold text-yellow-500 w-fit">Video Edukasi</div>
-
-                    <div className="relative w-full max-w-3xl overflow-hidden rounded-lg shadow-lg min-h-[16rem] sm:min-h-[20rem] md:min-h-[24rem] lg:min-h-[28rem] bg-neutral-900">
+                    <div className="relative w-full max-w-3xl overflow-hidden rounded-lg shadow-lg min-h-[16rem] bg-neutral-900">
                         {videoLoading ? (
                             <div className="w-full h-full animate-pulse bg-neutral-800" />
                         ) : videoErr ? (
@@ -264,38 +242,16 @@ export default function VideoGaleri() {
                                         <img
                                             src={currentVideo.thumb}
                                             alt={currentVideo.title}
-                                            className="w-full h-64 sm:h-80 md:h-96 lg:h-[28rem] object-contain rounded-lg bg-neutral-900 cursor-pointer"
+                                            className="w-full h-82 object-cover rounded-lg bg-neutral-900 cursor-pointer"
                                             onClick={() => openVideoModal(currentVideo)}
                                             loading="lazy"
                                         />
-                                        <button
-                                            onClick={() => openVideoModal(currentVideo)}
-                                            className="absolute inset-0 flex items-center justify-center"
-                                            aria-label="Putar video"
-                                        >
-                                            <span className="opacity-90 hover:scale-110 transition-transform bg-black/60 text-white rounded-full p-4">
-                                                ▶
-                                            </span>
-                                        </button>
                                     </motion.div>
                                 </AnimatePresence>
-
                                 {videoList.length > 1 && (
                                     <>
-                                        <button
-                                            onClick={prevVideo}
-                                            className="absolute top-1/2 left-2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70"
-                                            aria-label="Sebelumnya"
-                                        >
-                                            ❮
-                                        </button>
-                                        <button
-                                            onClick={nextVideo}
-                                            className="absolute top-1/2 right-2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70"
-                                            aria-label="Berikutnya"
-                                        >
-                                            ❯
-                                        </button>
+                                        <button onClick={prevVideo} className="absolute top-1/2 left-2">❮</button>
+                                        <button onClick={nextVideo} className="absolute top-1/2 right-2">❯</button>
                                     </>
                                 )}
                             </>
@@ -316,7 +272,7 @@ export default function VideoGaleri() {
                     >
                         <button
                             onClick={closeLegalitasModal}
-                            className="absolute right-3 top-3 px-3 py-1 text-sm rounded-full bg-neutral-700 text-white hover:bg-neutral-800 transition"
+                            className="absolute right-3 top-3 px-3 py-1 text-sm rounded-full bg-neutral-700 text-white hover:bg-neutral-800 transition cursor-pointer"
                         >
                             Close
                         </button>
@@ -330,7 +286,7 @@ export default function VideoGaleri() {
                 </div>
             )}
 
-            {/* Modal Video — gunakan <iframe> langsung dan STABIL */}
+            {/* Modal Video */}
             {videoModalOpen && activeVideo && (
                 <div
                     className="fixed inset-0 bg-black/70 backdrop-blur-[1px] flex justify-center items-center z-50 p-4"
@@ -342,7 +298,7 @@ export default function VideoGaleri() {
                     >
                         <button
                             onClick={closeVideoModal}
-                            className="absolute right-3 top-3 px-3 py-1 text-sm rounded-full bg-neutral-700 text-white hover:bg-neutral-800 transition"
+                            className="absolute right-3 top-3 px-3 py-1 text-sm rounded-full bg-neutral-700 text-white hover:bg-neutral-800 transition cursor-pointer"
                         >
                             Close
                         </button>
