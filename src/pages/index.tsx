@@ -5,7 +5,7 @@ import NewsHome from "@/components/organism/NewsHome";
 import VideoGaleri from "@/components/organism/VideoGaleri";
 import Watcher from "@/components/organism/Watcher";
 import PageTemplates from "@/components/templates/PageTemplates";
-import FloatingTranslate from "@/components/organism/FloatingTranslate"; // tambahkan
+// import FloatingTranslate from "@/components/organism/FloatingTranslate";
 
 export default function Home() {
   return (
