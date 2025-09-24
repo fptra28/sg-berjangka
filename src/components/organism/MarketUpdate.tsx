@@ -17,7 +17,7 @@ export default function MarketUpdate() {
     const containerRef = useRef<HTMLDivElement>(null);
 
     const { data, error, isValidating, mutate } = useSWR<Quote[]>(
-        "/api/Market",
+        "https://endpoapi-production-3202.up.railway.app/api/quotes",
         async (url) => {
             const raw = await fetcher(url);
             // pastikan selalu array agar tidak pernah undefined

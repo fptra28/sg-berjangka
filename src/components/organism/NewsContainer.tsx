@@ -42,6 +42,7 @@ const kategoriMap: Record<string, string[]> = {
     commodityNews: ["Gold", "Silver", "Oil"],
     currenciesNews: ["EUR/USD", "USD/JPY", "USD/CHF", "AUD/USD", "GBP/USD", "US DOLLAR"],
     economicNews: ["Global Economics"],
+    fiscalMoneter: ["Fiscal & Moneter"],
     analisisMarket: ["Analisis Market"],
     analisisOpini: ["Analisis & Opini"],
 };
@@ -105,7 +106,7 @@ export default function NewsContainer({ kategoriSlug }: NewsContainerProps) {
     const filters = useMemo(() => ["All", ...(kategoriMap[kategoriSlug] || [])], [kategoriSlug]);
 
     // === SWR ===
-    const { data, error } = useSWR("/api/berita", fetcher, {
+    const { data, error } = useSWR("https://portalnews.newsmaker.id/api/berita", fetcher, {
         refreshInterval: 15_000,
         revalidateOnFocus: true,
         revalidateOnReconnect: true,

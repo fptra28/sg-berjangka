@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import useSWR from "swr";
 import { motion, AnimatePresence } from "framer-motion";
@@ -25,11 +26,21 @@ type ApiVideo = {
 type VideoItem = { id: number; title: string; thumb: string; iframeHtml: string };
 
 /* ========= Utils ========= */
-const fetcher = (url: string) =>
-    fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" }).then((r) => {
+const fetcher = (url: string) => {
+    const token = process.env.NEXT_PUBLIC_API_TOKEN || localStorage.getItem('token');
+    console.log("Bearer Token:", token);  // Log token untuk debugging
+
+    return fetch(url, {
+        headers: {
+            Accept: "application/json",
+            Authorization: `Bearer SGB-c7b0604664fd48d9`, // Menambahkan Bearer token pada header
+        },
+        cache: "no-store",
+    }).then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status} on ${url}`);
         return r.json();
     });
+};
 
 function mediaUrl(p?: string | null) {
     if (!p) return "/placeholder.jpg";
@@ -52,19 +63,21 @@ export default function VideoGaleri() {
         data: legalitasData,
         error: legalitasErr,
         isLoading: legalitasLoading,
-    } = useSWR<ApiLegalitas[]>("/api/legalitas", fetcher, {
+    } = useSWR<ApiLegalitas[]>("https://vellorist.biz.id/api/v1/legalitas", fetcher, {
         refreshInterval: 60_000,
         revalidateOnFocus: true,
         revalidateOnReconnect: true,
         keepPreviousData: true,
-        // compare agar tidak update jika sama
         compare: (a, b) => JSON.stringify(a) === JSON.stringify(b),
     });
 
-    const legalitasList: LegalitasItem[] = useMemo(
-        () => (legalitasData ?? []).map((it) => ({ title: it.title, file: mediaUrl(it.image) })),
-        [legalitasData]
-    );
+    // Pastikan data legalitas adalah array sebelum melakukan map
+    const legalitasList: LegalitasItem[] = useMemo(() => {
+        if (Array.isArray(legalitasData?.data)) {  // Pastikan data berada dalam array 'data'
+            return legalitasData.data.map((it) => ({ title: it.title, file: mediaUrl(it.image) }));
+        }
+        return []; // Jika data tidak dalam bentuk array, kembalikan array kosong
+    }, [legalitasData]);
 
     const [legalitasIndex, setLegalitasIndex] = useState(0);
     useEffect(() => setLegalitasIndex(0), [legalitasList.length]);
@@ -88,8 +101,7 @@ export default function VideoGaleri() {
         data: videoData,
         error: videoErr,
         isLoading: videoLoading,
-    } = useSWR<ApiVideo[]>("/api/video", fetcher, {
-        // ⬇️ pause revalidate saat modal TERBUKA supaya iframe tidak direset
+    } = useSWR<ApiVideo[]>("https://vellorist.biz.id/api/v1/video", fetcher, {
         refreshInterval: videoModalOpen ? 0 : 60_000,
         revalidateOnFocus: !videoModalOpen,
         revalidateOnReconnect: !videoModalOpen,
@@ -97,21 +109,22 @@ export default function VideoGaleri() {
         compare: (a, b) => JSON.stringify(a) === JSON.stringify(b),
     });
 
-    const videoList: VideoItem[] = useMemo(
-        () =>
-            (videoData ?? []).map((v) => ({
+    // Pastikan data video adalah array
+    const videoList: VideoItem[] = useMemo(() => {
+        if (Array.isArray(videoData?.data)) {  // Pastikan data berada dalam array 'data'
+            return videoData.data.map((v) => ({
                 id: v.id,
                 title: v.title,
                 thumb: mediaUrl(v.image),
                 iframeHtml: v.embed_code,
-            })),
-        [videoData]
-    );
+            }));
+        }
+        return []; // Jika data tidak dalam bentuk array, kembalikan array kosong
+    }, [videoData]);
 
     const [videoIndex, setVideoIndex] = useState(0);
     useEffect(() => setVideoIndex(0), [videoList.length]);
 
-    // ⬇️ hentikan auto-slide saat modal terbuka
     useEffect(() => {
         if (videoList.length < 2 || videoModalOpen) return;
         const itv = setInterval(() => setVideoIndex((p) => (p + 1) % videoList.length), 5000);
@@ -159,7 +172,6 @@ export default function VideoGaleri() {
         return () => window.removeEventListener("keydown", onKey);
     }, [videoModalOpen, closeVideoModal]);
 
-    // Ambil src untuk iframe; memo berdasar ID video (stabil saat data SWR revalidate)
     const activeSrc = useMemo(() => extractIframeSrc(activeVideo?.iframeHtml), [activeVideo?.id]);
 
     // TikTok (contoh)
@@ -337,7 +349,6 @@ export default function VideoGaleri() {
 
                         <div className="w-full h-[65vh] bg-black rounded-lg overflow-hidden">
                             {activeSrc ? (
-                                // ⬇️ key = id → tidak berubah selama video sama → iframe tidak remount
                                 <iframe
                                     key={activeVideo.id}
                                     src={activeSrc}

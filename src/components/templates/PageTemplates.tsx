@@ -8,6 +8,7 @@ import TopNews from "../organism/TopNews";
 import { useState, useEffect } from "react";
 import Router from "next/router";
 import { DataLoaderProvider, useDataLoader } from "@/providers/DataLoaderProvider";
+import TradingView from "../organism/TradingView";
 
 interface PageTemplatesProps {
     title?: string;
@@ -37,8 +38,6 @@ function PageInner({ children, title }: PageTemplatesProps) {
     const [navHeight, setNavHeight] = useState(96);
     const [routing, setRouting] = useState(false);
     const { pendingCount } = useDataLoader();
-
-    // 🔥 aktifkan overlay dari awal render
     const [initialLoading, setInitialLoading] = useState(true);
 
     // hitung tinggi navbar
@@ -60,7 +59,6 @@ function PageInner({ children, title }: PageTemplatesProps) {
         };
         const handleEnd = () => {
             setRouting(false);
-            // scroll unlock akan di-handle oleh effect showOverlay (di bawah)
         };
         Router.events.on("routeChangeStart", handleStart);
         Router.events.on("routeChangeComplete", handleEnd);
@@ -74,7 +72,6 @@ function PageInner({ children, title }: PageTemplatesProps) {
     }, []);
 
     // Matikan initial loading ketika tidak routing & tidak ada pending fetch.
-    // Ditunda 200ms agar tidak flicker.
     useEffect(() => {
         if (!routing && pendingCount === 0) {
             const t = setTimeout(() => setInitialLoading(false), 200);
@@ -100,22 +97,19 @@ function PageInner({ children, title }: PageTemplatesProps) {
                 <title>{title} - PT. Solid Gold Berjangka</title>
                 <link rel="icon" type="image/png" href="/icon/favicon-96x96.png" sizes="96x96" />
                 <link rel="icon" type="image/svg+xml" href="/icon/favicon.svg" />
-                <link rel="shortcut icon" href="/icon/favicon.ico" />
-                <link rel="apple-touch-icon" sizes="180x180" href="/icon/apple-touch-icon.png" />
                 <meta name="apple-mobile-web-app-title" content="SGB" />
                 <link rel="manifest" href="/icon/site.webmanifest" />
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-                <link
-                    href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100..900;1,100..900&display=swap"
-                    rel="stylesheet"
-                />
             </Head>
 
-            {/* Overlay global */}
+            {/* Global Loading Overlay */}
             <GlobalLoadingOverlay active={showOverlay} />
 
-            <div className={`min-h-screen overflow-x-hidden ${showOverlay ? "opacity-0" : "opacity-100"} transition-opacity duration-200`}>
+            {/* Main Content with Adjusted Scroll */}
+            <div
+                className={`min-h-screen overflow-x-hidden ${showOverlay ? "opacity-0" : "opacity-100"} transition-opacity duration-200`}
+            >
                 <Navbar />
                 <div style={{ marginTop: navHeight }}>
                     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-0">
@@ -126,26 +120,30 @@ function PageInner({ children, title }: PageTemplatesProps) {
                         <div className="space-y-10">{children}</div>
                     </main>
 
-                    <Footer />
+                    {/* Wrap TradingView and Footer inside Fade-up to prevent double scroll */}
+                    <div>
+                        <TradingView />
+                        <Footer />
+                    </div>
                 </div>
             </div>
 
-            {/* Tawk.to */}
+            {/* Tawk.to Script */}
             <Script
                 id="tawk-to"
                 strategy="afterInteractive"
                 dangerouslySetInnerHTML={{
                     __html: `
-            var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
-            (function(){
-                var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
-                s1.async=true;
-                s1.src='https://embed.tawk.to/689ee66f35c68d1927d54cb8/1j2mb89if';
-                s1.charset='UTF-8';
-                s1.setAttribute('crossorigin','*');
-                s0.parentNode.insertBefore(s1,s0);
-            })();
-          `,
+                        var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+                        (function(){
+                            var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
+                            s1.async=true;
+                            s1.src='https://embed.tawk.to/689ee66f35c68d1927d54cb8/1j2mb89if';
+                            s1.charset='UTF-8';
+                            s1.setAttribute('crossorigin','*');
+                            s0.parentNode.insertBefore(s1,s0);
+                        })();
+                    `,
                 }}
             />
         </>

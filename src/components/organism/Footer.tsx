@@ -64,13 +64,13 @@ export default function Footer() {
     ];
 
     return (
-        <footer className="w-full bg-black text-gray-300 mt-10">
+        <footer className="w-full bg-black text-gray-300 border-t border-zinc-600">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-0 py-12">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
                     {/* Logo & Deskripsi */}
                     <div>
                         <img
-                            src="/assets/Logo SG-WEB.png"
+                            src="/assets/Logo Solid-Calibri-Fix-2.png"
                             alt="Logo"
                             className="h-12 mb-4"
                         />

@@ -45,7 +45,10 @@ export default function Navbar() {
                 },
                 {
                     category: "Ekonomi",
-                    children: [{ label: "Global & Ekonomi", href: "/economicNews" }],
+                    children: [
+                        { label: "Global & Ekonomi", href: "/economicNews" },
+                        { label: "Fiscal & Moneter", href: "/fiscalMoneter" },
+                    ],
                 },
             ],
         },

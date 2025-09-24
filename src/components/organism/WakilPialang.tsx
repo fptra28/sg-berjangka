@@ -12,10 +12,18 @@ type WakilPialang = {
 };
 
 // fetcher sederhana
-const fetcher = (url: string) => fetch(url).then((r) => {
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    return r.json();
-});
+const fetcher = (url: string) =>
+    fetch(url, {
+        headers: {
+            Accept: "application/json",
+            Authorization: "Bearer SGB-c7b0604664fd48d9",
+        },
+        cache: "no-store",
+    }).then(async (r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const json = await r.json();
+        return json.data as WakilPialang[]; // hanya ambil bagian data
+    });
 
 function statusClass(status: string) {
     const s = status.trim().toLowerCase();
@@ -25,10 +33,10 @@ function statusClass(status: string) {
 }
 
 export default function WakilPialangSection() {
-    const { data, error, isLoading } = useSWR<WakilPialang[]>("/api/wakilPialang", fetcher);
+    const { data, error, isLoading } = useSWR<WakilPialang[]>("https://vellorist.biz.id/api/v1/wakil-pialang", fetcher);
 
     return (
-        <section className="text-white space-y-7" data-aos="fade-up">
+        <section className="text-white space-y-7 mb-5" data-aos="fade-up">
             <div className="text-center mx-auto max-w-xl px-4">
                 <p className="font-bold mb-2 uppercase text-yellow-500 text-sm md:text-base">
                     Wakil Pialang

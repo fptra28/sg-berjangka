@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import useSWR from "swr";
 import NewsCard from "../moleculs/NewsCard";
 
@@ -18,7 +19,7 @@ type TitleVariants = {
 interface Berita {
     id: number;
     title: string;
-    titles?: TitleVariants; // <-- tambahkan ini
+    titles?: TitleVariants;
     slug: string;
     content: string;
     category_id: number;
@@ -28,7 +29,6 @@ interface Berita {
     updated_at: string;
 }
 
-/** Peta kategori: slug halaman -> daftar nama kategori pada data */
 const kategoriMap: Record<string, string[]> = {
     indexNews: ["Nikkei", "Hangseng"],
     commodityNews: ["Gold", "Silver", "Oil"],
@@ -45,7 +45,6 @@ const kategoriMap: Record<string, string[]> = {
     analisisOpini: ["Analisis & Opini"],
 };
 
-/** Reverse lookup: dari nama kategori (di data) -> slug halaman */
 function getKategoriSlugFromName(name?: string): string | null {
     if (!name) return null;
     const n = name.trim().toLowerCase();
@@ -69,22 +68,23 @@ function mediaUrl(p?: string) {
     return `${base}/${p.replace(/^\/+/, "")}`;
 }
 
-/** fetcher dasar */
 const fetcher = (url: string) =>
-    fetch(url, { headers: { accept: "application/json" }, cache: "no-store" }).then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status} on ${url}`);
-        return r.json();
-    });
+    fetch(url, { headers: { accept: "application/json" }, cache: "no-store" }).then(
+        (r) => {
+            if (!r.ok) throw new Error(`HTTP ${r.status} on ${url}`);
+            return r.json();
+        }
+    );
 
-/** Ambil array dari berbagai bentuk respons */
+// Normalisasi supaya pasti array
 function pickArray<T = unknown>(raw: any): T[] {
     if (Array.isArray(raw)) return raw as T[];
     if (raw && Array.isArray(raw.data)) return raw.data as T[];
     if (raw && raw.data && Array.isArray(raw.data.data)) return raw.data.data as T[];
+    // tambahkan bentuk lain kalau API berubah
     return [];
 }
 
-/** Ambil judul dengan prioritas: sg -> default -> title */
 function pickTitle(item: Berita): string {
     const t = item.titles ?? {};
     const candidates = [t.sg, t.default, item.title];
@@ -92,23 +92,27 @@ function pickTitle(item: Berita): string {
 }
 
 export default function RandomizeNews({ excludedSlug }: { excludedSlug?: string }) {
-    const { data, error, isLoading } = useSWR("/api/berita", fetcher, {
+    const {
+        data,
+        error,
+        isLoading,
+    } = useSWR("https://portalnews.newsmaker.id/api/berita", fetcher, {
         refreshInterval: 15_000,
         revalidateOnFocus: true,
         revalidateOnReconnect: true,
         keepPreviousData: true,
     });
 
-    // Normalisasi berita
-    let news: Berita[] = pickArray<Berita>(data)
-        .filter(
-            (b) =>
-                b &&
-                typeof b.id === "number" &&
-                typeof b.slug === "string"
-        );
+    // cek format data di console
+    useEffect(() => {
+        console.log("API response:", data);
+    }, [data]);
 
-    // Exclude slug jika ada
+    // Normalisasi berita supaya aman
+    let news: Berita[] = pickArray<Berita>(data).filter(
+        (b) => b && typeof b.id === "number" && typeof b.slug === "string"
+    );
+
     if (excludedSlug) {
         const cur = excludedSlug.toLowerCase().trim();
         news = news.filter((b) => (b.slug || "").toLowerCase().trim() !== cur);
@@ -147,13 +151,16 @@ export default function RandomizeNews({ excludedSlug }: { excludedSlug?: string 
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {news.map((item) => {
-                        const cleanDescription = stripHtml(item.content).replace(/&nbsp;/g, " ").trim();
+                        const cleanDescription = stripHtml(item.content)
+                            .replace(/&nbsp;/g, " ")
+                            .trim();
                         const img = mediaUrl(item.images?.[0]);
-
                         const mappedKategoriSlug = getKategoriSlugFromName(item.kategori?.name);
                         const href =
                             mappedKategoriSlug && item.slug
-                                ? `/${encodeURIComponent(mappedKategoriSlug)}/${encodeURIComponent(item.slug)}`
+                                ? `/${encodeURIComponent(mappedKategoriSlug)}/${encodeURIComponent(
+                                    item.slug
+                                )}`
                                 : "/#";
 
                         return (

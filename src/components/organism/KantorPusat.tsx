@@ -18,9 +18,16 @@ type Setting = {
 };
 
 const fetcher = (url: string) =>
-    fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" }).then((r) => {
+    fetch(url, {
+        headers: {
+            Accept: "application/json",
+            Authorization: "Bearer SGB-c7b0604664fd48d9",
+        },
+        cache: "no-store",
+    }).then(async (r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json() as Promise<Setting[]>;
+        const json = await r.json();
+        return json.data as Setting[]; // hanya ambil bagian data
     });
 
 function toEmbedUrl(mapsLink?: string | null, address?: string) {
@@ -38,7 +45,7 @@ function toEmbedUrl(mapsLink?: string | null, address?: string) {
 }
 
 export default function KantorPusat() {
-    const { data, error, isLoading } = useSWR<Setting[]>("/api/settings", fetcher, {
+    const { data, error, isLoading } = useSWR<Setting[]>("https://vellorist.biz.id/api/v1/setting", fetcher, {
         refreshInterval: 60_000,
         revalidateOnFocus: true,
         revalidateOnReconnect: true,

@@ -15,21 +15,32 @@ type Setting = {
     updated_at?: string;
 };
 
-// API /pages/api/settings.ts already returns an array of settings
+// fetcher dengan bearer token + mengambil data.data
 const fetcher = (url: string) =>
-    fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" }).then((r) => {
+    fetch(url, {
+        headers: {
+            Accept: "application/json",
+            Authorization: "Bearer SGB-c7b0604664fd48d9",
+        },
+        cache: "no-store",
+    }).then(async (r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json() as Promise<Setting[]>;
+        const json = await r.json();
+        return json.data as Setting[]; // hanya ambil bagian data
     });
 
 export default function AboutSection() {
-    const { data, error, isLoading } = useSWR<Setting[]>("/api/settings", fetcher, {
-        refreshInterval: 60_000,
-        revalidateOnFocus: true,
-        revalidateOnReconnect: true,
-        keepPreviousData: true,
-        dedupingInterval: 0,
-    });
+    const { data, error, isLoading } = useSWR<Setting[]>(
+        "https://vellorist.biz.id/api/v1/setting",
+        fetcher,
+        {
+            refreshInterval: 60_000,
+            revalidateOnFocus: true,
+            revalidateOnReconnect: true,
+            keepPreviousData: true,
+            dedupingInterval: 0,
+        }
+    );
 
     const setting = data?.[0];
 
@@ -48,7 +59,7 @@ export default function AboutSection() {
                     </div>
                 </div>
 
-                {/* Teks di kanan (dinamis dari API) */}
+                {/* Teks di kanan */}
                 <div className="md:w-1/2 w-full text-center" data-aos="fade-left">
                     <h2 className="font-bold mb-2 uppercase text-yellow-500">Tentang Kami</h2>
 
@@ -76,6 +87,6 @@ export default function AboutSection() {
                     )}
                 </div>
             </div>
-        </section >
+        </section>
     );
 }

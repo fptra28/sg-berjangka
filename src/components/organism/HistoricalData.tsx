@@ -61,7 +61,7 @@ export default function HistoricalDataTable() {
     const DEFAULT_FILTER: FilterType = "LGD Daily";
     const [activeFilter, setActiveFilter] = useState<FilterType>(DEFAULT_FILTER);
 
-    const { data, error, isLoading, mutate } = useSWR<unknown>("/api/HistoricalData", fetcher, {
+    const { data, error, isLoading, mutate } = useSWR<unknown>("https://portalnews.newsmaker.id/api/pivot-history", fetcher, {
         refreshInterval: 60_000,
         revalidateOnFocus: true,
         revalidateOnReconnect: true,

@@ -35,9 +35,21 @@ export default function ProdukContainer({ kategoriProduk }: ProdukContainerProps
             try {
                 setLoading(true);
                 setError(null);
-                const res = await fetch("/api/produk", { cache: "no-store" });
+                const res = await fetch("https://vellorist.biz.id/api/v1/produk", {
+                    cache: "no-store",
+                    headers: {
+                        "Authorization": "Bearer SGB-c7b0604664fd48d9",
+                        "Accept": "application/json",
+                    },
+                });
+
                 if (!res.ok) throw new Error("Gagal memuat data produk");
-                const data: Produk[] = await res.json();
+
+                // JSON dari server
+                const json = await res.json();
+                // ambil array data
+                const data: Produk[] = json.data;
+
                 if (!Array.isArray(data)) throw new Error("Format data tidak valid");
                 if (!isMounted) return;
 
@@ -93,7 +105,7 @@ export default function ProdukContainer({ kategoriProduk }: ProdukContainerProps
     }
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-5">
             {produk.map((p) => (
                 <ProdukCard
                     key={p.id}

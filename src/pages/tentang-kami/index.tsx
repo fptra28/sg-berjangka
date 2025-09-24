@@ -23,7 +23,8 @@ export default function TentangKami() {
                 <StatsSection />
             </section>
 
-            <hr className="border border-gray-500" data-aos="fade-up" />
+
+            <hr className="border border-white/25" data-aos="fade-up" />
 
             <WakilPialangSection />
 

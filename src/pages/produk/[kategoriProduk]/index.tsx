@@ -18,7 +18,7 @@ export default function ProdukByKategoriPage({ kategoriProduk }: PageProps) {
 
     return (
         <PageTemplates title={pageTitle}>
-            <Header title={headerTitle} subtitle="Solid Gold Berjangka" />
+            <Header title={headerTitle} subtitle="PT. Solid Gold Berjangka" />
             <ProdukContainer kategoriProduk={kategoriProduk} />
         </PageTemplates>
     );

@@ -1,9 +1,9 @@
 "use client";
 
-import useSWR from "swr";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useDataLoader } from "@/providers/DataLoaderProvider";
+import useSWR from "swr";
 
+// Types
 interface Quote {
     symbol: string;
     last: number;
@@ -25,15 +25,13 @@ type DisplayItem =
 
 const numberFmt = new Intl.NumberFormat("id-ID", { maximumFractionDigits: 2 });
 
-// ---------------- Fetchers & normalizers ----------------
-
+// ---------- fetchers & helpers ----------
 const baseFetcher = (url: string) =>
     fetch(url, { headers: { accept: "application/json" }, cache: "no-store" }).then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status} on ${url}`);
         return r.json();
     });
 
-// robust: ambil array dari berbagai bentuk respons
 function pickArray<T = unknown>(raw: any): T[] {
     if (Array.isArray(raw)) return raw as T[];
     if (raw && Array.isArray(raw.data)) return raw.data as T[];
@@ -41,10 +39,8 @@ function pickArray<T = unknown>(raw: any): T[] {
     return [];
 }
 
-const newsFetcher = async (url: string) => pickArray<Berita>(await baseFetcher(url));
-const marketFetcher = async (url: string) => pickArray<Quote>(await baseFetcher(url));
-
-function normalizeMarket(raw: unknown[]): Quote[] {
+function normalizeMarket(raw: unknown): Quote[] {
+    if (!Array.isArray(raw)) return [];
     return raw.filter((d): d is Quote => {
         return (
             d !== null &&
@@ -56,7 +52,8 @@ function normalizeMarket(raw: unknown[]): Quote[] {
     });
 }
 
-function normalizeNews(raw: unknown[]): Berita[] {
+function normalizeNews(raw: unknown): Berita[] {
+    if (!Array.isArray(raw)) return [];
     return raw
         .filter(
             (d): d is Berita =>
@@ -72,12 +69,8 @@ function normalizeNews(raw: unknown[]): Berita[] {
         });
 }
 
-/** builder item marquee */
 function buildDisplayItems(market: Quote[], news: Berita[]): DisplayItem[] {
-    const topNews = news
-        .slice(0, 3)
-        .map((n) => n.title.trim())
-        .filter(Boolean);
+    const topNews = news.slice(0, 3).map((n) => n.title.trim()).filter(Boolean);
     const newsContent = topNews.length ? topNews.join(" • ") : "Tidak ada berita terbaru";
     const newsItem: DisplayItem = { type: "news", content: newsContent };
     const marketItems: DisplayItem[] = market.map((m) => ({
@@ -89,54 +82,57 @@ function buildDisplayItems(market: Quote[], news: Berita[]): DisplayItem[] {
     return [{ type: "sep" }, newsItem, { type: "sep" }, ...marketItems, { type: "sep" }];
 }
 
+// ---------- komponen ----------
 export default function TopNews() {
-    const { track } = useDataLoader();
-
-    // refs untuk hitung kecepatan marquee
     const containerRef = useRef<HTMLDivElement | null>(null);
     const contentRef = useRef<HTMLDivElement | null>(null);
-    const [marqueeDuration, setMarqueeDuration] = useState<number>(25); // default (detik)
+    const [marqueeDuration, setMarqueeDuration] = useState<number>(25);
     const [marqueeActive, setMarqueeActive] = useState<boolean>(true);
 
-    // SWR News
-    const {
-        data: newsRaw,
-        error: newsErr,
-        isLoading: newsLoading,
-        mutate: mutateNews,
-    } = useSWR("/api/berita", newsFetcher, {
-        refreshInterval: 15_000, // 15 detik
-        revalidateOnFocus: true,
-        revalidateOnReconnect: true,
-    });
+    // fetch berita manual sekali
+    const [newsRaw, setNewsRaw] = useState<unknown>([]);
+    const [newsLoading, setNewsLoading] = useState(true);
+    const [hasError, setHasError] = useState(false);
 
-    // SWR Market
+    useEffect(() => {
+        let mounted = true;
+        async function fetchNews() {
+            try {
+                setNewsLoading(true);
+                setHasError(false);
+                const newsRes = await baseFetcher("https://portalnews.newsmaker.id/api/berita");
+                if (!mounted) return;
+                setNewsRaw(pickArray<Berita>(newsRes));
+            } catch (err) {
+                if (mounted) setHasError(true);
+            } finally {
+                if (mounted) setNewsLoading(false);
+            }
+        }
+        fetchNews();
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
+    // quotes pakai SWR (update 15 detik)
     const {
         data: marketRaw,
         error: marketErr,
         isLoading: marketLoading,
-        mutate: mutateMarket,
-    } = useSWR("/api/Market", marketFetcher, {
-        refreshInterval: 15_000, // 15 detik
-        revalidateOnFocus: true,
-        revalidateOnReconnect: true,
-    });
+    } = useSWR("https://endpoapi-production-3202.up.railway.app/api/quotes", async (url) =>
+        pickArray<Quote>(await baseFetcher(url))
+        , {
+            refreshInterval: 15000,
+            revalidateOnFocus: true,
+            revalidateOnReconnect: true,
+        });
 
-    // initial revalidate via tracker (paksa fetch pertama kali)
-    useEffect(() => {
-        const p = Promise.all([
-            mutateNews(undefined, { revalidate: true }),
-            mutateMarket(undefined, { revalidate: true }),
-        ]);
-        track(p);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    const news = useMemo(() => normalizeNews(newsRaw ?? []), [newsRaw]);
+    const news = useMemo(() => normalizeNews(newsRaw), [newsRaw]);
     const market = useMemo(() => normalizeMarket(marketRaw ?? []), [marketRaw]);
+
     const items: DisplayItem[] = useMemo(() => buildDisplayItems(market, news), [market, news]);
 
-    // Duplikasi untuk efek marquee tak terputus (pangkas 'sep' terakhir)
     const displayItems: DisplayItem[] = useMemo(() => {
         if (!items.length) return [];
         const trimmed = items[items.length - 1]?.type === "sep" ? items.slice(0, -1) : items;
@@ -144,20 +140,17 @@ export default function TopNews() {
     }, [items]);
 
     const loading = newsLoading || marketLoading;
-    const hasError = Boolean(newsErr || marketErr);
+    const error = hasError || marketErr;
 
-    // Hitung durasi animasi berdasar lebar konten
+    // hitung durasi marquee
     useEffect(() => {
         if (!contentRef.current || !containerRef.current) return;
-
         const contentWidth = contentRef.current.scrollWidth;
         const containerWidth = containerRef.current.clientWidth;
-
         if (contentWidth <= containerWidth) {
             setMarqueeActive(false);
             return;
         }
-
         const SPEED = 140;
         const duration = contentWidth / SPEED;
         setMarqueeDuration(Math.max(8, Math.min(duration, 50)));
@@ -178,14 +171,15 @@ export default function TopNews() {
                                 <div key={i} className="h-4 w-28 rounded bg-neutral-700 animate-pulse" />
                             ))}
                         </div>
-                    ) : hasError ? (
+                    ) : error ? (
                         <div className="text-red-400">Gagal memuat data.</div>
                     ) : displayItems.length === 0 ? (
                         <div className="text-gray-300">Tidak ada data.</div>
                     ) : (
                         <div
                             ref={contentRef}
-                            className={`whitespace-nowrap flex gap-6 will-change-transform ${marqueeActive ? "marquee" : ""}`}
+                            className={`whitespace-nowrap flex gap-6 will-change-transform ${marqueeActive ? "marquee" : ""
+                                }`}
                             style={
                                 marqueeActive
                                     ? ({ ["--marquee-duration" as any]: `${marqueeDuration}s` } as React.CSSProperties)
@@ -219,7 +213,7 @@ export default function TopNews() {
                                             key={`mkt-${item.content}-${idx}`}
                                             className="flex-shrink-0 text-gray-200"
                                             aria-label={`${item.content} ${typeof item.value === "number" ? numberFmt.format(item.value) : "-"
-                                                }`}
+                                                } `}
                                         >
                                             <span className="font-semibold">{item.content}</span>:{" "}
                                             <span>

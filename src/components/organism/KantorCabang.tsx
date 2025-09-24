@@ -16,13 +16,20 @@ type Kantor = {
 
 // Karena API internal sudah mengembalikan array langsung, fetcher cukup return r.json()
 const fetcher = (url: string) =>
-    fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" }).then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status} on ${url}`);
-        return r.json() as Promise<Kantor[]>;
+    fetch(url, {
+        headers: {
+            Accept: "application/json",
+            Authorization: "Bearer SGB-c7b0604664fd48d9",
+        },
+        cache: "no-store",
+    }).then(async (r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const json = await r.json();
+        return json.data as Kantor[]; // hanya ambil bagian data
     });
 
 export default function KantorCabangSection() {
-    const { data, error, isLoading } = useSWR<Kantor[]>("/api/kantorCabang", fetcher, {
+    const { data, error, isLoading } = useSWR<Kantor[]>("https://vellorist.biz.id/api/v1/kantor-cabang", fetcher, {
         refreshInterval: 30_000,   // auto-refresh tiap 30 detik
         revalidateOnFocus: true,    // revalidate saat tab kembali aktif
         revalidateOnReconnect: true,
@@ -33,7 +40,7 @@ export default function KantorCabangSection() {
     const kantorList = data ?? [];
 
     return (
-        <div>
+        <div className="mb-5">
             <h2 className="font-bold mb-4 uppercase text-yellow-500 text-xl" data-aos="fade-right">Kantor Cabang</h2>
 
             {isLoading ? (

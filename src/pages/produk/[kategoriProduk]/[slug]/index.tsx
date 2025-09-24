@@ -54,13 +54,19 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
     try {
         const host = ctx.req.headers.host!;
         const protocol = host.startsWith("localhost") ? "http" : "https";
-        const res = await fetch(`${protocol}://${host}/api/produk`, {
-            headers: { Accept: "application/json" },
+
+        const res = await fetch(`https://vellorist.biz.id/api/v1/produk`, {
+            headers: {
+                Accept: "application/json",
+                Authorization: "Bearer SGB-c7b0604664fd48d9", // 🔹 tambahkan token
+            },
         });
 
         if (!res.ok) return { notFound: true };
 
-        const list: Produk[] = await res.json();
+        const json = await res.json();
+        const list: Produk[] = json.data; // 🔹 ambil data dari json.data
+
         if (!Array.isArray(list)) return { notFound: true };
 
         const produk = list.find(
@@ -80,3 +86,4 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
         return { notFound: true };
     }
 };
+

@@ -42,6 +42,7 @@ const kategoriMap: Record<string, string[]> = {
   ],
   // samakan dengan nama kategori di API:
   economicNews: ["Global Economics"],
+  fiscalMoneter: ["Fiscal & Moneter"],
   analisisMarket: ["Analisis Market"],
   analisisOpini: ["Analisis & Opini"],
 };
@@ -97,7 +98,7 @@ function pickTitle(item: Berita): string {
 }
 
 export default function NewsHome() {
-  const { data, error, isLoading } = useSWR("/api/berita", fetcher, {
+  const { data, error, isLoading } = useSWR("https://portalnews.newsmaker.id/api/berita", fetcher, {
     refreshInterval: 15_000,
     revalidateOnFocus: true,
     revalidateOnReconnect: true,

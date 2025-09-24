@@ -15,6 +15,7 @@ const readMoreUrlMap: Record<string, string> = {
   economicNews: "https://www.newsmaker.id/index.php/en/economic-news/economy",
   analisisMarket: "https://www.newsmaker.id/index.php/en/analysis/analysis-market",
   analisisOpini: "https://www.newsmaker.id/index.php/en/analysis/analysis-opinion",
+  fiscalMoneter: "https://www.newsmaker.id/index.php/en/economic-news/fiscal-moneter"
 };
 
 export default function ReadMore({ kategoriSlug }: ReadMoreProps) {
